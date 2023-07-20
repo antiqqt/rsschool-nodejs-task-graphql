@@ -1,22 +1,25 @@
-const helper = require('fastify-cli/helper.js');
-import * as path from 'path';
-import * as tap from 'tap';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { FastifyInstance } from 'fastify';
+import tap from 'tap';
+// @ts-ignore
+import helper from 'fastify-cli/helper.js';
 
-export type Test = typeof tap['Test']['prototype'];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const AppPath = path.join(__dirname, '..', 'src', 'app.ts');
+export type Test = (typeof tap)['Test']['prototype'];
 
-async function config() {
+const AppPath = join(__dirname, '..', 'dist', 'app.js');
+
+function config() {
   return {};
 }
 
 async function build(t: Test) {
   const argv = [AppPath];
-
-  const app = await helper.build(argv, await config());
-
-  t.teardown(() => void app.close());
-
+  const app = (await helper.build(argv, config())) as FastifyInstance;
+  t.teardown(() => app.close());
   return app;
 }
 

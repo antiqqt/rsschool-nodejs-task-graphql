@@ -1,29 +1,49 @@
-export const createUserBodySchema = {
-  type: 'object',
-  required: ['firstName', 'lastName', 'email'],
-  properties: {
-    firstName: { type: 'string' },
-    lastName: { type: 'string' },
-    email: { type: 'string' },
-  },
-  additionalProperties: false,
-} as const;
+import { Type } from '@fastify/type-provider-typebox';
 
-export const changeUserBodySchema = {
-  type: 'object',
-  properties: {
-    firstName: { type: 'string' },
-    lastName: { type: 'string' },
-    email: { type: 'string' },
-  },
-  additionalProperties: false,
-} as const;
+export const userFields = {
+  id: Type.String({
+    format: 'uuid',
+  }),
+  name: Type.String(),
+  balance: Type.Number(),
+};
 
-export const subscribeBodySchema = {
-  type: 'object',
-  required: ['userId'],
-  properties: {
-    userId: { type: 'string', format: 'uuid' },
-  },
-  additionalProperties: false,
-} as const;
+export const userSchema = Type.Object({
+  ...userFields,
+});
+
+export const getUserByIdSchema = {
+  params: Type.Object(
+    {
+      userId: userFields.id,
+    },
+    {
+      additionalProperties: false,
+    },
+  ),
+};
+
+export const createUserSchema = {
+  body: Type.Object(
+    {
+      name: userFields.name,
+      balance: userFields.balance,
+    },
+    {
+      additionalProperties: false,
+    },
+  ),
+};
+
+export const changeUserByIdSchema = {
+  params: getUserByIdSchema.params,
+  body: Type.Partial(
+    Type.Object({
+      name: userFields.name,
+      balance: userFields.balance,
+    }),
+    {
+      additionalProperties: false,
+    },
+  ),
+};

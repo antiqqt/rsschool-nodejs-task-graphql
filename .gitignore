@@ -59,3 +59,8 @@ test/types/index.js
 
 # compiled app
 dist
+
+.env
+
+database.db
+database.db-journal

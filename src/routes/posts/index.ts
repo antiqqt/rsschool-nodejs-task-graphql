@@ -1,77 +1,101 @@
-import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
-import { idParamSchema } from '../../utils/reusedSchemas';
-import { createPostBodySchema, changePostBodySchema } from './schema';
-import type { PostEntity } from '../../utils/DB/entities/DBPosts';
+import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
+import {
+  changePostByIdSchema,
+  createPostSchema,
+  getPostByIdSchema,
+  postSchema,
+} from './schemas.js';
 
-const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
-  fastify
-): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<PostEntity[]> {
-    return await this.db.posts.findMany();
+const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma, httpErrors } = fastify;
+
+  fastify.route({
+    url: '/',
+    method: 'GET',
+    schema: {
+      response: {
+        200: Type.Array(postSchema),
+      },
+    },
+    async handler() {
+      return prisma.post.findMany();
+    },
   });
 
-  fastify.get(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:postId',
+    method: 'GET',
+    schema: {
+      ...getPostByIdSchema,
+      response: {
+        200: postSchema,
+        404: Type.Null(),
       },
     },
-    async function (request, reply): Promise<PostEntity> {
-      const { id } = request.params;
-      const post = await this.db.posts.findOne({ key: 'id', equals: id });
-      if (!post) throw this.httpErrors.notFound();
-
-      return post;
-    }
-  );
-
-  fastify.post(
-    '/',
-    {
-      schema: {
-        body: createPostBodySchema,
-      },
-    },
-    async function (request, reply): Promise<PostEntity> {
-      return await this.db.posts.create({
-        ...request.body,
+    async handler(req) {
+      const post = await prisma.post.findUnique({
+        where: {
+          id: req.params.postId,
+        },
       });
-    }
-  );
+      if (post === null) {
+        throw httpErrors.notFound();
+      }
+      return post;
+    },
+  });
 
-  fastify.delete(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/',
+    method: 'POST',
+    schema: {
+      ...createPostSchema,
+      response: {
+        200: postSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {
-      const { id } = request.params;
-      const post = await this.db.posts.findOne({ key: 'id', equals: id });
-      if (!post) throw this.httpErrors.badRequest();
+    async handler(req) {
+      return prisma.post.create({
+        data: req.body,
+      });
+    },
+  });
 
-      return this.db.posts.delete(id);
-    }
-  );
-
-  fastify.patch(
-    '/:id',
-    {
-      schema: {
-        body: changePostBodySchema,
-        params: idParamSchema,
+  fastify.route({
+    url: '/:postId',
+    method: 'PATCH',
+    schema: {
+      ...changePostByIdSchema,
+      response: {
+        200: postSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {
-      const { id } = request.params;
-      const post = await this.db.posts.findOne({ key: 'id', equals: id });
-      if (!post) throw this.httpErrors.badRequest();
+    async handler(req) {
+      return prisma.post.update({
+        where: { id: req.params.postId },
+        data: req.body,
+      });
+    },
+  });
 
-      return this.db.posts.change(id, request.body);
-    }
-  );
+  fastify.route({
+    url: '/:postId',
+    method: 'DELETE',
+    schema: {
+      ...getPostByIdSchema,
+      response: {
+        204: Type.Void(),
+      },
+    },
+    async handler(req, reply) {
+      void reply.code(204);
+      await prisma.post.delete({
+        where: {
+          id: req.params.postId,
+        },
+      });
+    },
+  });
 };
 
 export default plugin;

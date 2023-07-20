@@ -1,51 +1,44 @@
-import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
-import { idParamSchema } from '../../utils/reusedSchemas';
-import { changeMemberTypeBodySchema } from './schema';
-import type { MemberTypeEntity } from '../../utils/DB/entities/DBMemberTypes';
+import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
+import { getMemberTypeByIdSchema, memberTypeSchema } from './schemas.js';
 
-const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
-  fastify
-): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<
-    MemberTypeEntity[]
-  > {
-    return this.db.memberTypes.findMany();
+const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma, httpErrors } = fastify;
+
+  fastify.route({
+    url: '/',
+    method: 'GET',
+    schema: {
+      response: {
+        200: Type.Array(memberTypeSchema),
+      },
+    },
+    async handler() {
+      return prisma.memberType.findMany();
+    },
   });
 
-  fastify.get(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:memberTypeId',
+    method: 'GET',
+    schema: {
+      ...getMemberTypeByIdSchema,
+      response: {
+        200: memberTypeSchema,
+        404: Type.Null(),
       },
     },
-    async function (request, reply): Promise<MemberTypeEntity> {
-      const { id } = request.params;
-      const memberType = await this.db.memberTypes.findOne({ key: 'id', equals: id });
-      if (!memberType) throw this.httpErrors.notFound();
-
-      return memberType;
-    }
-  );
-
-  fastify.patch(
-    '/:id',
-    {
-      schema: {
-        body: changeMemberTypeBodySchema,
-        params: idParamSchema,
-      },
-    },
-    async function (request, reply): Promise<MemberTypeEntity> {
-      const { id } = request.params;
-      const memberType = await this.db.memberTypes.findOne({ key: 'id', equals: id });
-      if (!memberType) throw this.httpErrors.badRequest();
-
-      return this.db.memberTypes.change(id, {
-        ...request.body,
+    async handler(req) {
+      const memberType = await prisma.memberType.findUnique({
+        where: {
+          id: req.params.memberTypeId,
+        },
       });
-    }
-  );
+      if (memberType === null) {
+        throw httpErrors.notFound();
+      }
+      return memberType;
+    },
+  });
 };
 
 export default plugin;

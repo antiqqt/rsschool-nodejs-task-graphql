@@ -1,27 +1,35 @@
-import { faker } from '@faker-js/faker';
+import { randomInt, randomUUID } from 'node:crypto';
+import { createUserSchema } from '../../src/routes/users/schemas.js';
+import { Static } from '@fastify/type-provider-typebox';
+import { createProfileSchema } from '../../src/routes/profiles/schemas.js';
+import { createPostSchema } from '../../src/routes/posts/schemas.js';
+import { MemberTypeId } from '../../src/routes/member-types/schemas.js';
 
-export const generate_createUserDTO = () => ({
-  firstName: faker.name.firstName(),
-  lastName: faker.name.lastName(),
-  email: faker.internet.email(),
-});
+export function genCreateUserDto(): Static<(typeof createUserSchema)['body']> {
+  return {
+    name: randomUUID(),
+    balance: randomInt(0, 100) + +Math.random().toFixed(3),
+  };
+}
 
-export const generate_createProfileDTO = (
+export function genCreateProfileDto(
   userId: string,
-  memberTypeId: string
-) => ({
-  userId,
-  memberTypeId,
-  avatar: faker.image.avatar(),
-  sex: faker.name.sexType(),
-  birthday: faker.date.birthdate().getTime(),
-  country: faker.address.country(),
-  street: faker.address.street(),
-  city: faker.address.city(),
-});
+  memberTypeId: MemberTypeId,
+): Static<(typeof createProfileSchema)['body']> {
+  return {
+    userId,
+    memberTypeId,
+    isMale: !randomInt(0, 2),
+    yearOfBirth: randomInt(1950, 2000),
+  };
+}
 
-export const generate_createPostDTO = (userId: string) => ({
-  userId,
-  title: faker.lorem.sentence(),
-  content: faker.lorem.sentences(5),
-});
+export function genCreatePostDto(
+  authorId: string,
+): Static<(typeof createPostSchema)['body']> {
+  return {
+    authorId,
+    content: randomUUID(),
+    title: randomUUID(),
+  };
+}

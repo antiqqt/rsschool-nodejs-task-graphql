@@ -1,88 +1,101 @@
-import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
-import { idParamSchema } from '../../utils/reusedSchemas';
-import { createProfileBodySchema, changeProfileBodySchema } from './schema';
-import type { ProfileEntity } from '../../utils/DB/entities/DBProfiles';
+import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
+import {
+  changeProfileByIdSchema,
+  createProfileSchema,
+  getProfileByIdSchema,
+  profileSchema,
+} from './schemas.js';
 
-const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
-  fastify
-): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<ProfileEntity[]> {
-    return await this.db.profiles.findMany();
+const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma, httpErrors } = fastify;
+
+  fastify.route({
+    url: '/',
+    method: 'GET',
+    schema: {
+      response: {
+        200: Type.Array(profileSchema),
+      },
+    },
+    async handler() {
+      return prisma.profile.findMany();
+    },
   });
 
-  fastify.get(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:profileId',
+    method: 'GET',
+    schema: {
+      ...getProfileByIdSchema,
+      response: {
+        200: profileSchema,
+        404: Type.Null(),
       },
     },
-    async function (request, reply): Promise<ProfileEntity> {
-      const { id } = request.params;
-      const profile = await this.db.profiles.findOne({ key: 'id', equals: id });
-      if (!profile) throw this.httpErrors.notFound();
-
+    async handler(req) {
+      const profile = await prisma.profile.findUnique({
+        where: {
+          id: req.params.profileId,
+        },
+      });
+      if (profile === null) {
+        throw httpErrors.notFound();
+      }
       return profile;
-    }
-  );
+    },
+  });
 
-  fastify.post(
-    '/',
-    {
-      schema: {
-        body: createProfileBodySchema,
+  fastify.route({
+    url: '/',
+    method: 'POST',
+    schema: {
+      ...createProfileSchema,
+      response: {
+        200: profileSchema,
       },
     },
-    async function (request, reply): Promise<ProfileEntity> {
-      const { userId, memberTypeId } = request.body;
+    async handler(req) {
+      return prisma.profile.create({
+        data: req.body,
+      });
+    },
+  });
 
-      const [user, memberType, profile] = await Promise.all([
-        this.db.users.findOne({ key: 'id', equals: userId }),
-        this.db.memberTypes.findOne({ key: 'id', equals: memberTypeId }),
-        this.db.profiles.findOne({
-          key: 'userId',
-          equals: userId,
-        }),
-      ]);
-
-      if (!user || !memberType || profile) throw this.httpErrors.badRequest();
-
-      return await this.db.profiles.create(request.body);
-    }
-  );
-
-  fastify.delete(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:profileId',
+    method: 'PATCH',
+    schema: {
+      ...changeProfileByIdSchema,
+      response: {
+        200: profileSchema,
       },
     },
-    async function (request, reply): Promise<ProfileEntity> {
-      const { id } = request.params;
-      const profile = await this.db.profiles.findOne({ key: 'id', equals: id });
-      if (!profile) throw this.httpErrors.badRequest();
+    async handler(req) {
+      return prisma.profile.update({
+        where: { id: req.params.profileId },
+        data: req.body,
+      });
+    },
+  });
 
-      return await this.db.profiles.delete(id);
-    }
-  );
-
-  fastify.patch(
-    '/:id',
-    {
-      schema: {
-        body: changeProfileBodySchema,
-        params: idParamSchema,
+  fastify.route({
+    url: '/:profileId',
+    method: 'DELETE',
+    schema: {
+      ...getProfileByIdSchema,
+      response: {
+        204: Type.Void(),
       },
     },
-    async function (request, reply): Promise<ProfileEntity> {
-      const { id } = request.params;
-      const profile = await this.db.profiles.findOne({ key:'id', equals: id });
-      if (!profile) throw this.httpErrors.badRequest();
-
-      return await this.db.profiles.change(id, request.body);
-    }
-  );
+    async handler(req, reply) {
+      void reply.code(204);
+      await prisma.profile.delete({
+        where: {
+          id: req.params.profileId,
+        },
+      });
+    },
+  });
 };
 
 export default plugin;

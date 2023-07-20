@@ -1,18 +1,21 @@
-import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
-import { graphqlBodySchema } from './schema';
+import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { createGqlResponseSchema, gqlResponseSchema } from './schemas.js';
+import { graphql } from 'graphql';
 
-const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
-  fastify
-): Promise<void> => {
-  fastify.post(
-    '/',
-    {
-      schema: {
-        body: graphqlBodySchema,
+const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  fastify.route({
+    url: '/',
+    method: 'POST',
+    schema: {
+      ...createGqlResponseSchema,
+      response: {
+        200: gqlResponseSchema,
       },
     },
-    async function (request, reply) {}
-  );
+    async handler(req) {
+      return {};
+    },
+  });
 };
 
 export default plugin;

@@ -1,162 +1,101 @@
-import { FastifyPluginAsyncJsonSchemaToTs } from '@fastify/type-provider-json-schema-to-ts';
-import { idParamSchema } from '../../utils/reusedSchemas';
+import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
 import {
-  createUserBodySchema,
-  changeUserBodySchema,
-  subscribeBodySchema,
-} from './schemas';
-import type { UserEntity } from '../../utils/DB/entities/DBUsers';
+  changeUserByIdSchema,
+  createUserSchema,
+  getUserByIdSchema,
+  userSchema,
+} from './schemas.js';
 
-const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
-  fastify
-): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<UserEntity[]> {
-    return await this.db.users.findMany();
+const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma, httpErrors } = fastify;
+
+  fastify.route({
+    url: '/',
+    method: 'GET',
+    schema: {
+      response: {
+        200: Type.Array(userSchema),
+      },
+    },
+    async handler() {
+      return prisma.user.findMany();
+    },
   });
 
-  fastify.get(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:userId',
+    method: 'GET',
+    schema: {
+      ...getUserByIdSchema,
+      response: {
+        200: userSchema,
+        404: Type.Null(),
       },
     },
-    async function (request, reply): Promise<UserEntity> {
-      const { id } = request.params;
-      const user = await this.db.users.findOne({ key: 'id', equals: id });
-      if (!user) throw this.httpErrors.notFound();
-
+    async handler(req) {
+      const user = await prisma.user.findUnique({
+        where: {
+          id: req.params.userId,
+        },
+      });
+      if (user === null) {
+        throw httpErrors.notFound();
+      }
       return user;
-    }
-  );
+    },
+  });
 
-  fastify.post(
-    '/',
-    {
-      schema: {
-        body: createUserBodySchema,
+  fastify.route({
+    url: '/',
+    method: 'POST',
+    schema: {
+      ...createUserSchema,
+      response: {
+        200: userSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {
-      return await this.db.users.create(request.body);
-    }
-  );
+    async handler(req) {
+      return prisma.user.create({
+        data: req.body,
+      });
+    },
+  });
 
-  fastify.delete(
-    '/:id',
-    {
-      schema: {
-        params: idParamSchema,
+  fastify.route({
+    url: '/:userId',
+    method: 'DELETE',
+    schema: {
+      ...getUserByIdSchema,
+      response: {
+        204: Type.Void(),
       },
     },
-    async function (request, reply): Promise<UserEntity> {
-      const { id: userId } = request.params;
-      const user = await this.db.users.findOne({ key: 'id', equals: userId });
-      if (!user) throw this.httpErrors.badRequest();
+    async handler(req, reply) {
+      void reply.code(204);
+      await prisma.user.delete({
+        where: {
+          id: req.params.userId,
+        },
+      });
+    },
+  });
 
-      const [posts, subscriptions, profile] = await Promise.all([
-        this.db.posts.findMany({ key: 'userId', equals: userId }),
-        this.db.users.findMany({
-          key: 'subscribedToUserIds',
-          inArray: userId,
-        }),
-        this.db.profiles.findOne({ key: 'userId', equals: userId }),
-      ]);
-
-      await Promise.all(
-        posts.map(async (post) => this.db.posts.delete(post.id))
-      );
-
-      await Promise.all(
-        subscriptions.map(async (sub) =>
-          this.db.users.change(sub.id, {
-            subscribedToUserIds: sub.subscribedToUserIds.filter(
-              (id) => id !== userId
-            ),
-          })
-        )
-      );
-
-      if (profile) await this.db.profiles.delete(profile.id);
-
-      return await this.db.users.delete(userId);
-    }
-  );
-
-  fastify.post(
-    '/:id/subscribeTo',
-    {
-      schema: {
-        body: subscribeBodySchema,
-        params: idParamSchema,
+  fastify.route({
+    url: '/:userId',
+    method: 'PATCH',
+    schema: {
+      ...changeUserByIdSchema,
+      response: {
+        200: userSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {
-      const { id: userId } = request.params;
-      const { userId: targetId } = request.body;
-      const user = await this.db.users.findOne({ key: 'id', equals: userId });
-      if (!user) throw this.httpErrors.notFound();
-
-      const target = await this.db.users.findOne({
-        key: 'id',
-        equals: targetId,
+    async handler(req) {
+      return prisma.user.update({
+        where: { id: req.params.userId },
+        data: req.body,
       });
-      if (!target) throw this.httpErrors.badRequest();
-
-      return this.db.users.change(targetId, {
-        subscribedToUserIds: [...target.subscribedToUserIds, userId],
-      });
-    }
-  );
-
-  fastify.post(
-    '/:id/unsubscribeFrom',
-    {
-      schema: {
-        body: subscribeBodySchema,
-        params: idParamSchema,
-      },
     },
-    async function (request, reply): Promise<UserEntity> {
-      const { id: userId } = request.params;
-      const { userId: targetId } = request.body;
-      const user = await this.db.users.findOne({ key: 'id', equals: userId });
-      if (!user) throw this.httpErrors.notFound();
-
-      const target = await this.db.users.findOne({
-        key: 'id',
-        equals: targetId,
-      });
-      if (!target) throw this.httpErrors.badRequest();
-      if (!target.subscribedToUserIds.includes(userId))
-        throw this.httpErrors.badRequest();
-
-      return this.db.users.change(targetId, {
-        subscribedToUserIds: target.subscribedToUserIds.filter(
-          (id) => id !== userId
-        ),
-      });
-    }
-  );
-
-  fastify.patch(
-    '/:id',
-    {
-      schema: {
-        body: changeUserBodySchema,
-        params: idParamSchema,
-      },
-    },
-    async function (request, reply): Promise<UserEntity> {
-      const { id } = request.params;
-      const user = await this.db.users.findOne({ key: 'id', equals: id });
-      if (!user) throw this.httpErrors.badRequest();
-
-      return this.db.users.change(id, {
-        ...request.body,
-      });
-    }
-  );
+  });
 };
 
 export default plugin;
