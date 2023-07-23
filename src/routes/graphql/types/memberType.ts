@@ -7,7 +7,7 @@ import {
   GraphQLObjectType
 } from 'graphql';
 import { memberTypeSchema } from '../../member-types/schemas.js';
-import { GQLContext, extractType } from './gqlSchema.js';
+import { GQLContext, extractType } from '../gqlSchema.js';
 import { ProfileType } from './profile.js';
 
 type Source = extractType<typeof memberTypeSchema>;

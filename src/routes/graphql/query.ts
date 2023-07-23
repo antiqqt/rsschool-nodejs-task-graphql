@@ -1,5 +1,5 @@
 import { GraphQLList, GraphQLObjectType } from 'graphql';
-import { GQLContext } from './types/gqlSchema.js';
+import { GQLContext } from './gqlSchema.js';
 import { MemberType, MemberTypeIdEnum } from './types/memberType.js';
 import { PostType } from './types/post.js';
 import { ProfileType } from './types/profile.js';

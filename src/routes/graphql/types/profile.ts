@@ -1,10 +1,21 @@
-import { GraphQLBoolean, GraphQLInt, GraphQLNonNull, GraphQLObjectType } from 'graphql';
+import {
+  GraphQLBoolean,
+  GraphQLInputObjectType,
+  GraphQLInt,
+  GraphQLNonNull,
+  GraphQLObjectType,
+} from 'graphql';
 
-import { profileSchema } from '../../profiles/schemas.js';
-import { GQLContext, extractType } from './gqlSchema.js';
-import { UUIDType } from './uuid.js';
+import {
+  changeProfileByIdSchema,
+  createProfileSchema,
+  profileSchema,
+} from '../../profiles/schemas.js';
+import { GQLContext, extractType } from '../gqlSchema.js';
+import { MemberType, MemberTypeIdEnum } from './memberType.js';
 import { UserType } from './user.js';
-import { MemberType } from './memberType.js';
+import { UUIDType } from './uuid.js';
+import { Static } from '@sinclair/typebox';
 
 type Source = extractType<typeof profileSchema>;
 
@@ -14,8 +25,8 @@ export const ProfileType: GraphQLObjectType<Source, GQLContext> = new GraphQLObj
     id: { type: UUIDType },
     isMale: { type: new GraphQLNonNull(GraphQLBoolean) },
     yearOfBirth: { type: new GraphQLNonNull(GraphQLInt) },
-    userId: { type: UUIDType },
-    memberTypeId: { type: UUIDType },
+    userId: { type: new GraphQLNonNull(UUIDType) },
+    memberTypeId: { type: new GraphQLNonNull(MemberTypeIdEnum) },
 
     user: {
       type: UserType,
@@ -32,5 +43,27 @@ export const ProfileType: GraphQLObjectType<Source, GQLContext> = new GraphQLObj
         });
       },
     },
+  }),
+});
+
+export type CreateProfileInput = Static<(typeof createProfileSchema)['body']>;
+export type ChangeProfileInput = Static<(typeof changeProfileByIdSchema)['body']>;
+
+export const CreateProfileInputType = new GraphQLInputObjectType({
+  name: 'CreateProfileInput',
+  fields: () => ({
+    isMale: { type: new GraphQLNonNull(GraphQLBoolean) },
+    yearOfBirth: { type: new GraphQLNonNull(GraphQLInt) },
+    userId: { type: new GraphQLNonNull(UUIDType) },
+    memberTypeId: { type: new GraphQLNonNull(MemberTypeIdEnum) },
+  }),
+});
+
+export const ChangeProfileInputType = new GraphQLInputObjectType({
+  name: 'ChangeProfileInput',
+  fields: () => ({
+    isMale: { type: GraphQLBoolean },
+    yearOfBirth: { type: GraphQLInt },
+    memberTypeId: { type: MemberTypeIdEnum },
   }),
 });

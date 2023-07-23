@@ -1,15 +1,21 @@
 import {
+  GraphQLFloat,
+  GraphQLInputObjectType,
+  GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
   GraphQLString,
-  GraphQLFloat,
-  GraphQLList,
 } from 'graphql';
-import { userSchema } from '../../users/schemas.js';
-import { GQLContext, extractType } from './gqlSchema.js';
-import { UUIDType } from './uuid.js';
+import {
+  changeUserByIdSchema,
+  createUserSchema,
+  userSchema,
+} from '../../users/schemas.js';
+import { GQLContext, extractType } from '../gqlSchema.js';
 import { PostType } from './post.js';
 import { ProfileType } from './profile.js';
+import { UUIDType } from './uuid.js';
+import { Static } from '@sinclair/typebox';
 
 type Source = extractType<typeof userSchema>;
 
@@ -60,5 +66,24 @@ export const UserType: GraphQLObjectType<Source, GQLContext> = new GraphQLObject
         });
       },
     },
+  }),
+});
+
+export type CreateUserInput = Static<(typeof createUserSchema)['body']>;
+export type ChangeUserInput = Static<(typeof changeUserByIdSchema)['body']>;
+
+export const CreateUserInputType = new GraphQLInputObjectType({
+  name: 'CreateUserInput',
+  fields: () => ({
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    balance: { type: new GraphQLNonNull(GraphQLFloat) },
+  }),
+});
+
+export const ChangeUserInputType = new GraphQLInputObjectType({
+  name: 'ChangeUserInput',
+  fields: () => ({
+    name: { type: GraphQLString },
+    balance: { type: GraphQLFloat },
   }),
 });
