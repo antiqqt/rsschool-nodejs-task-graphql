@@ -151,15 +151,6 @@ export async function subscribeTo(
   return { res, body };
 }
 
-export async function usedSubscribedTo(app: FastifyInstance, userId: string) {
-  const res = await app.inject({
-    url: `/users/${userId}/user-subscribed-to`,
-    method: 'GET',
-  });
-  const body = (await res.json()) as UserBody[];
-  return { res, body };
-}
-
 export async function subscribedToUser(app: FastifyInstance, userId: string) {
   const res = await app.inject({
     url: `/users/${userId}/subscribed-to-user`,
@@ -167,6 +158,18 @@ export async function subscribedToUser(app: FastifyInstance, userId: string) {
   });
   const body = (await res.json()) as UserBody[];
   return { res, body };
+}
+
+export async function unsubscribeFrom(
+  app: FastifyInstance,
+  userId: string,
+  authorId: string,
+) {
+  const res = await app.inject({
+    url: `/users/${userId}/user-subscribed-to/${authorId}`,
+    method: 'DELETE',
+  });
+  return { res, body: {} };
 }
 
 export async function getPrismaStats(app: FastifyInstance) {

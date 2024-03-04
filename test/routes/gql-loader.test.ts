@@ -7,6 +7,7 @@ import {
   getPrismaStats,
   gqlQuery,
   subscribeTo,
+  unsubscribeFrom,
 } from '../utils/requests.js';
 import { MemberTypeId } from '../../src/routes/member-types/schemas.js';
 
@@ -70,5 +71,42 @@ await test('gql-loader', async (t) => {
 
     t.ok(foundPostCall);
     t.ok(foundMemberTypeCall);
+  });
+
+  await t.test('Dataloader should be created per request.', async (t) => {
+    const { body: user1 } = await createUser(app);
+    const { body: user2 } = await createUser(app);
+
+    await subscribeTo(app, user1.id, user2.id);
+
+    await gqlQuery(app, {
+      query: `query {
+        users {
+          id
+          userSubscribedTo {
+            id
+          }
+        }
+      }`,
+    });
+
+    await unsubscribeFrom(app, user1.id, user2.id);
+
+    const {
+      body: { data },
+    } = await gqlQuery(app, {
+      query: `query {
+        users {
+          id
+          userSubscribedTo {
+            id
+          }
+        }
+      }`,
+    });
+
+    const foundUser1 = data.users.find(({ id }) => id === user1.id);
+
+    t.ok(foundUser1.userSubscribedTo.length === 0);
   });
 });

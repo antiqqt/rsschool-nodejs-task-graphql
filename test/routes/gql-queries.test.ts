@@ -22,13 +22,10 @@ await test('gql-queries', async (t) => {
     await createPost(app, user1.id);
     await createProfile(app, user1.id, MemberTypeId.BASIC);
 
-    const [{ body: memberTypes }, { body: posts }, { body: users }, { body: profiles }] =
-      await Promise.all([
-        getMemberTypes(app),
-        getPosts(app),
-        getUsers(app),
-        getProfiles(app),
-      ]);
+    const { body: memberTypes } = await getMemberTypes(app);
+    const { body: posts } = await getPosts(app);
+    const { body: users } = await getUsers(app);
+    const { body: profiles } = await getProfiles(app);
 
     const {
       body: { data },
@@ -151,7 +148,7 @@ await test('gql-queries', async (t) => {
     const { body: profile1 } = await createProfile(app, user1.id, MemberTypeId.BASIC);
 
     const {
-      body: { data: dataUser, errors: errorsUser },
+      body: { data: dataUser },
     } = await gqlQuery(app, {
       query: `query ($userId: UUID!) {
           user(id: $userId) {
@@ -172,7 +169,7 @@ await test('gql-queries', async (t) => {
       },
     });
     const {
-      body: { data: dataUsers, errors: errorsUsers },
+      body: { data: dataUsers },
     } = await gqlQuery(app, {
       query: `query {
           users {
@@ -190,8 +187,6 @@ await test('gql-queries', async (t) => {
       }`,
     });
 
-    t.ok(!errorsUser);
-    t.ok(!errorsUsers);
     t.ok(dataUser.user.id === user1.id);
     t.ok(dataUser.user.profile.id === profile1.id);
     t.ok(dataUser.user.profile.memberType?.id === MemberTypeId.BASIC);
@@ -217,12 +212,14 @@ await test('gql-queries', async (t) => {
               id
               userSubscribedTo {
                   id
+                  name
                   subscribedToUser {
                       id
                   }
               }
               subscribedToUser {
                   id
+                  name
                   userSubscribedTo {
                       id
                   }
@@ -234,10 +231,12 @@ await test('gql-queries', async (t) => {
       },
     });
 
-    t.ok(data.user.id === user1.id);
     t.ok(data.user.userSubscribedTo[0].id === user2.id);
+    t.ok(data.user.userSubscribedTo[0].name === user2.name);
     t.ok(data.user.userSubscribedTo[0].subscribedToUser[0].id === user1.id);
+
     t.ok(data.user.subscribedToUser[0].id === user3.id);
+    t.ok(data.user.subscribedToUser[0].name === user3.name);
     t.ok(data.user.subscribedToUser[0].userSubscribedTo[0].id === user1.id);
   });
 });

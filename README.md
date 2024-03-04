@@ -19,6 +19,7 @@ Constraints and logic for gql queries should be done based on restful implementa
 ### Info:  
 It is forbidden to add new npm dependencies.  
 You should only modify/add the code inside the folder ./src/routes/graphql.  
+Do not create files with the name "index.ts". This name is reserved for fastify plugins.  
 You are responsible for using style configs that are in the repository.  
 Make sure the important files have not been changed: npm run test-integrity.  
 If the test was partially completed, then it is considered not completed.  
